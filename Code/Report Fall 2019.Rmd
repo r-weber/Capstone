@@ -25,7 +25,7 @@ shoot <- read.csv(file = "C:/Users/rache/Documents/Capstone/Data/NYC_extracolumn
 shoot$OCCUR_DATE <- anytime(shoot$OCCUR_DATE)
 ```
 ### Background
-NYC shooting data is publicly available for access through https://data.cityofnewyork.us/Public-Safety/NYPD-Shooting-Incident-Data-Historic-/833y-fsy8. The data are updated annually and contain data from January 1, 2013 to December 31, 2017--5 years of data. In this time `r nrow(shoot)` shootings occured. Their date, time, precinct, borough, and location are available along with perpetrator and victim age, race, and sex.
+NYC shooting data is publicly available for access through https://data.cityofnewyork.us/Public-Safety/NYPD-Shooting-Incident-Data-Historic-/833y-fsy8. The data are updated annually and contain data from January 1, 2006 to December 31, 2018. In this time `r nrow(shoot[!is.na(shoot$PRECINCT),])` shootings occured. Their date, time, precinct, borough, and location are available along with perpetrator and victim age, race, and sex.
 The weekend of october 12th, 2018 was the first shooting-free weekend the city has had 25 years. This headline made national news and being familiar with the law of truly large numbers, the question arose asking, "Was this truly a newsworthy event or was it bound to happen?"
 Figure 1 below shows the number of shootings stratified by year (left) and by season (right). Shootings have been reportedly going down in recent years, so a shooting-free weekend may be becoming more likely. Additionally, shooting rates change with the season, peaking in summer, so the probability of a shooting-free weekend may change with the season.
 ```{r}
@@ -54,13 +54,19 @@ g2
 ```
 
 ### Analysis
-One cannot assume that shootings on Saturday are completely independent of shootings on Friday. As such, we cannot multiply the days' probabilities together to get our weekend probability. The definition of conditional probability though, does not necessitate independence and can be used here. The probability of a shooting free weekend was calculated as follows:
+One cannot assume that shootings on Saturday are completely independent of shootings on Friday. As such, we cannot multiply the days' probabilities together to get our weekend probability. The definition of conditional probability though, does not necessitate independence and can be used here. The probability of a shooting-free weekend was calculated as follows:
+
 $P(\text{No Shooting Friday})=P(F)=\frac{\text{total Fridays without shootings}}{\text{total Fridays in 5 years}}=\frac{16}{985}=0.016$
+
 $P(\text{No shooting Saturday given no shooting Friday})=P(Sat|F)=\frac{P(Sat \cap F)}{P(F)}=.0032$
+
 $P(\text{No shooting Sunday given none Saturday AND Friday})=P(Sun | Sat\cap F)=\frac{P(Sun\cap Sat \cap F)}{P(Sat \cap F)}= \frac{P(Sun\cap Sat \cap F)}{P(Sat | F)}=\frac{P(Sun\cap Sat \cap F)*P(F)}{P(Sat\cap F)} 1.5*10^{-4}$
+
 Therefore, the probability of our full weekend being shooting-free is:
+
 $P(Sun|Sat \cap F)*P(Sat | F)*P(F)= 1.5*10^{-4}*.0032*.016=7.69*10^{-9}$
-The probability comes to be astoundingly small. The odds of a shooting free weekend given the last 5 years of data are about 7 is a billion. The odds of winning the Powerball jackpot are 1 in 292 million.
+
+The probability comes to be astoundingly small. The odds of a shooting-free weekend given the last 5 years of data are about 7 is a billion. The odds of winning the Powerball jackpot are 1 in 292 million.
 
 We calculated this assuming that Sundays shooting aren't independent of Fridays shootings. But how affected is it really. In the table below, we explore how our odds change given previous days' shooting totals.
 
@@ -135,10 +141,12 @@ t[7,3] <- p_fs_sats_sun
 pander(t)
 ```
 
-The odds of a shooting free Sunday when we're looking at just Saturdays data--row 2--and when we're also including friday are nearly identical. This would imply that our estimate for Sunday doesn't depend of Friday's shooting status. However, look at what happens when we compare odds of shooting-free Sundays given that Saturday had at least 1 shooting. Knowing that Friday was shooting-free increased our probability for Sunday a full order of magnitude. Is this difference significant? One could argue no. We're comparing odds of .00922 to .00015. Both are vanishingly small. So can be assume independence of Sunday from Friday? Well, it depends. I'll explore that later.
+The odds of a shooting-free Sunday when we're looking at just Saturdays data--row 2--and when we're also including friday are nearly identical. This would imply that our estimate for Sunday doesn't depend of Friday's shooting status. However, look at what happens when we compare odds of shooting-free Sundays given that Saturday had at least 1 shooting. Knowing that Friday was shooting-free increased our probability for Sunday a full order of magnitude. Is this difference significant? One could argue no. We're comparing odds of .00922 to .00015. Both are vanishingly small. So can be assume independence of Sunday from Friday? Well, it depends. I'll explore that later.
 
-Let's move into model building. Performing regression on our outcome of interest may shed more light than working with conditional probabilities. First I fit a cell means model using Day, Year, and Season as predictors of number of shootings in a given day. This value ranged from 0 to 19 in the 5 years of data used here.
-```{r}
+
+```{r, include = F, echo = F}
+# Let's move into model building. Performing regression on our outcome of interest may shed more light than working with conditional probabilities. First I fit a cell means model using Day, Year, and Season as predictors of number of shootings in a given day. This value ranged from 0 to 19 in the 5 years of data used here.
+
 test <- shoot %>% 
   group_by(OCCUR_DATE) %>% 
   dplyr::summarise(n_shootings = n())
@@ -156,11 +164,12 @@ short$num_year <- as.numeric(as.character(short$year))
 
 m1 <- glm(n_shootings ~ 0 + day + num_year + season, data = short)
 pander(summary(m1))
+
+# The model suggests that knowing the day of the week is important in predicting how many shootings are likely to occur. It being summer is predicted to increase the number of shootings by just over 60% and it being  is predicted to lower the number of shootings by about 1 shooting.
 ```
 
-The model suggests that knowing the day of the week is important in predicting how many shootings are likely to occur. It being summer is predicted to increase the number of shootings by just over 60% and it being  is predicted to lower the number of shootings by about 1 shooting.
 
-But we aren't that interested in how many shooting there were per day but whether or not there were none at all. We can model this with logistic regression with a binary outcome for shootings on a given day:
+We're interested in whether or not there is a shooting on a given day. We can model this with logistic regression:
 
 ```{r}
 m2 <- glm(yn_shoot ~ 0 + day + year + season, data = short, family = "binomial")
