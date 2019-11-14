@@ -1,5 +1,5 @@
 # NYC-Shooting-Report
-Side project to uncover the odds of a shooting-free weekend in NYC
+This is my capstone project that (1) looks to uncover the odds of a shooting-free weekend in NYC, given historic data and (2) develop a model that predicts the number of shootings expected on a given day
 
 Details about the folders:
 
