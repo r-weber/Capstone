@@ -11,6 +11,7 @@ library(magrittr)
 library(pander)
 library(ggplot2)
 library(MASS)
+library(metafor)
 
 options(scipen=999)
 
@@ -69,6 +70,14 @@ sum_shoot <- sum_shoot[!duplicated(sum_shoot),]
 # add number for each month and day
 sum_shoot <- sum_shoot %>% 
   mutate(md = row_number())
+
+# how many days were there no shootings?
+nrow(sum_shoot[!is.na(sum_shoot$number) & sum_shoot$number == 0,])
+
+# what was the average number of shootings per day?
+mean(sum_shoot$number)
+
+median(sum_shoot$number)
 
 ############################################# Univariate Analyses -- Day Level ###############################
 # m1 <- glm.nb(number ~ season, data = sum_shoot)
@@ -129,6 +138,17 @@ pval <- rownames_to_column(pval, "variable")
 
 pval <- pval[-1,]
 
+pval$variable <- factor(c("Baseline Slope", "Day (Mon)", "Day (Sat)", "Day (Sun)", 
+                          "Day (Thurs)", "Day (Tues)", "Day (Wed)", "Pre/Post SAFE Act", "Slope Change",
+                          "Month (Feb)", "Month (March)", "Month (April)", "Month (May)", "Month (June)", "Month (July)",
+                          "Month (Aug)", "Month (Sept)", "Month (Oct)", "Month (Nov)", "Month (Dec)"),
+                        levels = c("Month (Dec)", "Month (Nov)", "Month (Oct)", "Month (Sept)", "Month (Aug)",
+                                   "Month (July)", "Month (June)", "Month (May)", "Month (April)", "Month (March)",
+                                   "Month (Feb)", "Day (Sun)",  "Day (Sat)", "Day (Thurs)","Day (Wed)",
+                                   "Day (Tues)", "Day (Mon)",  "Slope Change", "Pre/Post SAFE Act", "Baseline Slope"
+                                   ))
+
+
 ggplot(pval, aes(y = variable, x = pval, label = variable)) +
   geom_point(size = 3, shape = 19) +
   geom_errorbarh(aes(xmin = V3, xmax = V4), height = .3) +
@@ -136,9 +156,16 @@ ggplot(pval, aes(y = variable, x = pval, label = variable)) +
   xlab("Estimated Change") +
   ylab("Variable") +
   geom_vline(xintercept = 1, col = "goldenrod4") +
-  annotate("text", x = 0.8, y = 1, label= "Decrease", col = "goldenrod4") +
-  annotate("text", x = 1.2, y = 1, label= "Increase", col = "goldenrod4")
+  annotate("text", x = 0.8, y = 20, label= "Decrease", col = "goldenrod4") +
+  annotate("text", x = 1.2, y = 20, label= "Increase", col = "goldenrod4")
 
+forestplot::forestplot(pval$variable, 
+                       mean = pval$pval, 
+                       lower = pval$V3, 
+                       upper = pval$V4,
+                       zero = 1,
+                       xticks = c(.8, 1, 1.2, 1.4, 1.6, 1.8, 2),
+                       )
 
 ######################### Make a month level model ###################################
 
